@@ -1,0 +1,52 @@
+target_name: main
+
+requirements: |
+  - Write Model-View-Controller (aka `MVC`) architecture with classes:
+      - HardwareAbstractionLayer: hal
+      - SignalModelFft : encapsulates audio processing and FFT analysis.
+      - SignalModelDecode : encapsulates morse decode processing .
+      - SignalView : to display the plots.
+      - SignalController : to manage updates and interactions between the model and view.
+  - Parameters:
+    - dit_msec: Duration of a single "dit" in milliseconds. (default: 66)
+  - Algorithm:
+    # STEP_1: Load configuration
+      - Open a YAML file configuration file.
+        - If files does not exist create it
+        - file name: './morse_cfg.yaml'
+        - YAML file contains Key-Value Pairs. 
+        - Use the MVC class names as keys.
+        - The values are dictionaries for the corresponding class instantiation configuration. 
+        - If key does not exist use a default empty dictionary.
+
+    # STEP_2a: instantiate classes
+      - hal/model_fft/model_decode/view/controller
+
+    # STEP_2b: setup classes
+      - model_fft.set_audio_rate_hz(hal.get_audio_rate_hz())
+      - model_fft.set_dit_msec(dit_msec)
+
+    # STEP_3: Save configuration
+      - Call each class 'get_params()` to update configuration
+      - Save configuration to the original YAML file
+
+    # STEP_4: Start the controller
+      - Call the controller `run()` method
+      
+architecture: |
+  - Package code with a function named main()
+
+# code_requirements: |
+#   - <list implementation requirements here>
+
+test_enable: False
+
+# test_requirements: |
+#   - <list any special tests>    
+
+code_references: |
+  - view/view_code.py
+  - model_fft/model_fft_code.py
+  - model_decode/model_decode_code.py
+  - controller/controller_code.py  
+  - hal/hal_code.py

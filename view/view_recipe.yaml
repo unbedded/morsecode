@@ -1,0 +1,59 @@
+target_name: SignalView
+
+requirements: |
+  - The system shall provide a View module that can display multiple rows of plots
+  - Let class PlotDataDict(TypedDict): Hz: float; x_origin: float; y: np.ndarray
+  - Let N_PLOTS=4
+  - CONSTRUCTION
+    - Initialize a plot display window with N_PLOTS rows of graphs named:
+      plot_1,plot_2,plot_3,plot_# where # is an integer from 1 to N_PLOTS inclusive
+    - Define class parameters for each plots line color (default: Green)
+
+  - METHODS:
+      update_plots(signal_dict : dict[PlotDataDict]) 
+        - Write function that efficiently updates an existing curve instead of re-plotting. 
+          Store PlotDataItem objects in a dictionary called curves, and use .setData(x, y) to update them. 
+        - Assume multiple plots are stored in a dictionary and should be updated in real-time.        
+        - the signal_dict key will be the name of the target plot
+        - iterate through the signal_dict updating plots w/ x,y values
+        - Use the formula for x values:
+          - x = np.linspace(0, (N - 1) * (1 / Hz), N)
+              - with Hz = Hz from signal_dict
+              - with N = len(y from signal_dict)
+        - for plot_2 Y 
+          - Remember the historical_max_y value of the y axis
+          - Set y axis range to historical_max_y 
+
+      rescale_plot()
+          Rescale plot_1 and plot_3 Y-axis to fit their range [0, max_y] with 10% padding.
+          Do not rescale plot_2 and plot_4.
+      
+      teardown()
+       - Add a teardown method to clean up resources and enable a finally block to ensure the teardown method is called.
+
+      run()
+        - Add a run method to start the display application loop.
+
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - using PyQtGraph module
+  - use from pyqtgraph.Qt import QtWidgets to create self.app = QtWidgets.QApplication([])
+  - Add a main function to run the application - 
+    generate sine wave data and plots it using the appropriate color for each graph.
+  - from typing import TypedDict
+
+test_enable: True
+
+test_requirements: |
+  - Do not test for handling invalid parameters
+  - Do not test for handling invalid data    
+  - Just test for plotting valid data
+  - plot scrolling sin wave for 2 seconds - same plot in each plot_1, plot_2, plot_3, plot_4
+  - Make sure to teardown the QApplication instance after each test
+
+# code_references: |
+#   - <list files to reference>  
+
+# - only rescale plot_two Y axis if a y plot_two axis value exceeds the current range

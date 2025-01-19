@@ -1,0 +1,47 @@
+target_name: streaming_fft
+
+requirements: |
+  - CLASS INITIALIZATION
+    - PARAMETERS: Initialize the class with the following parameters:
+      - window (str): Window function used to process the signal. Must be 'none', 'hamming', 'blackman'. Default is 'none'.
+
+  - METHOD: nperseg()
+    - return nperseg
+
+  - METHOD: fft()
+    - PARAMETERS:
+      - audio_freq_hz: (int) Sampling frequency in Hz. Must be greater than 0.
+      - current_segment: (array) a signal array for FFT processing.
+         Let segment_length = len(current_segment)
+    - RETURN: 
+      - frequency_bins: (array) containing the frequency bins. (length: nperseg+noverlap)
+      - time_bins: (array) containing the time points corresponding to each segment. (length: nperseg+noverlap)
+      - fft_magnitude: (array) containing the magnitude of the FFT results. (length: nperseg+noverlap)
+    - PROCESS: 
+      1. segment = Append `previous_segment` with `current_segment`.
+      2. If `window` is not 'none', apply the specified `window` function to the `segment`.
+      3. Perform FFT on segment.
+      4. Compute the magnitude of the complex FFT result.
+      5. set `previous_segment` = `current_segment`.
+      6. Recalculate `frequency_bins` and `time_bins` based on `audio_freq_hz` for the entire signal duration.
+      7. Return `frequency_bins`, `time_bins`, `fft_magnitude`.
+
+architecture: |
+  - package methods in a class named [TARGET_NAME]
+
+code_requirements: |
+  - If writing in Python, use numpy for array operations and scipy for FFT calculations
+
+test_enable: True
+
+test_requirements: |
+  - test fft() with sin_wave_test_signal with the following parameters:
+    - sample_freq_hz = 10000
+    - window = 'Hann'
+    - sine_freq_hz = 500
+    - Number_of_test_samples= 20000
+  - When testing fft of sin_wave_test_signal the peak freq is +/- frequency_bin resolution
+  - Do not test method nperseg()
+  - test plot_test() with a wav file /home/preact/sw/morsecode/wav/131210_20WPM.wav
+
+

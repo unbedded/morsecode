@@ -1,0 +1,165 @@
+target_name: "Synpat"
+
+requirements: |
+  Write a module w/ the methods:
+
+  Construction()
+   - Include the class parameters
+    - relative_height (default: 0.5)  NOTE:0.5 evaluates at half the prominence
+    - threshold_factor (default: 0.7)
+
+  create_synthetic_pattern()
+    To generate a synthetic array based on a provided pattern and normalize it with a specified amplitude multiplier.
+      1. Convert dit_msec (milliseconds) into samples using the given fft_rate_hz:
+      - samples_per_dit = (fft_rate_hz * dit_msec) / 1000
+      2. Construct the synthetic array:
+          Iterate over the pattern, which is a list of tuples:
+              Each tuple specifies:
+                  value (amplitude of the pulse, e.g., 0, -1, 1)
+                  duration_in_dits (duration of the pulse in terms of "dits")
+              If duration_in_dits is 0, the pulse should be a single sample with the specified value.
+              For non-zero durations, the pulse is created by repeating value for the corresponding number of samples.
+      3. Normalize the array:
+          Scale all values in the array by multiplying with amplitude_multiplier.
+      4. Return the resulting synthetic array as a numpy.ndarray.
+
+    ARGUMENTS::
+      - fft_rate_hz (int or float): Sampling rate in Hertz (Hz).
+      - dit_msec (int or float): Duration of a single "dit" in milliseconds.
+      - pattern (list of tuples): Defines the structure of the synthetic array. Each tuple contains:
+            value (int or float): Amplitude of the pulse.
+            duration_in_dits (int or float): Duration in "dits".
+      - amplitude_multiplier (int or float): Factor for normalizing the amplitude.
+    RETURNS:
+      - numpy.ndarray: 1D array representing the synthetic time series, where the length 
+        matches the total duration in samples.
+
+  generate_synthetic_patterns()
+    To create multiple synthetic arrays based on predefined 
+      patterns and normalization multipliers 
+      and save them a public variable dictionary named synthetic_patterns
+      1. Save a private variable with fft_rate_hz.
+      2. Use the following create_synthetic_pattern function to generate synthetic arrays for the following patterns and their multipliers:
+          `dit`:  [(-1, 1), (+1, 1), (-1, 1)]  - and multiply elements by 9x
+          `ndit`: [(+1, 1), (-1, 1), (+1, 1)] - and multiply elements by 9x
+          `dah`:  [(-1, 1), (+1, 3), (-1, 1)] - and multiply elements by 5x
+          `letter`: [(+1, 1), (-1, 3), (+1, 1)] - and multiply elements by 5x
+          `word`: [(+1, 1), (-1, 7)] - and multiply elements by 3x
+      3. Iterate over these patterns, using create_synthetic_pattern to generate the arrays.
+         The corresponding values should be the generated synthetic arrays
+        
+    ARGUMENTS::
+        - fft_rate_hz (int or float): Sampling rate in Hertz (Hz).
+        - dit_msec (int or float): Duration of a single "dit" in milliseconds.
+    RETURNS: None
+
+  analyze_waveform()
+      1. Calculate 
+        - nominal width in indices using the pulse width and sample rate.
+        - calcualte prominence_threshold
+        - calculate peak_height_min
+      2. Identify peaks: in the waveform using scipy.signal.find_peaks, setting the 
+          height=peak_height_min and the calculated prominence=prominence_threshold.
+      3. Compute FWHM for each peak: Compute the full width at half maximum (FWHM) for each peak using 
+         scipy.signal.peak_widths with a relative height of relative_height.
+        - convert widths to integers 
+      4. Mark Peaks attriubute is_unfiltered: Set True if peak's width is within (fwhm_min, fwhm_max) (inclusive)
+      5- Return tuple w/ results 
+
+    ARGUMENTS:
+      - waveform: a NumPy array representing the waveform.
+      - pulse_width_sec: float range:(0.02,1.0) default= 0.06  
+          a float representing the nominal pulse width in seconds.
+          Must be long enough for a space which is 7 dits wide.
+      - prominence_factor: float range:[0.1,1.0) default= 0.7 
+          to scale the prominence threshold.
+      - fwhm_min_factor: float range:[0.2,1.0) default= 0.7
+      - fwhm_max_factor: float range:(1.0,1.4) default= 1.2
+
+    RETURN: a NamedTuple named `AnalysisInfo` w/
+      - prominence_threshold = waveform.max() * prominence_factor
+      - peak_height_min = waveform.max() * threshold_factor
+      - fwhm_min = {nominal_width * fwhm_min_factor} 
+      - nominal_width = {nominal_width} - 
+      - fwhm_max = {nominal_width * fwhm_max_factor}
+      - a list of NamedTuple named 'PeakInfo' w/ one item for each idenitfied peak from find_peaks()
+        - index: the indices of peak
+        - prominence_percent: equal to 100*(peak height - prominence_threshold )/prominence_threshold
+          an integer representing percentage 
+          (prominence threshold) vs (actual Peak(prominence threshold)  
+        - fwhm_width: FWHM peak width
+        - is_unfiltered: boolean if identified peak is included in filtered peak
+    
+    CONSTRAINTS:  Use the following constants:
+
+      # - waveform_type: an enum of one of the following values: 'dit', 'ndit', 'dah', 'space', 'word'.
+
+
+architecture: |
+ - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - when printing floating point numbers - use 1 decimal places formated as .1f
+  - when printing numpy floating point arrays, format w/ use 1 decimal places formated as %.1f
+
+# code_references: |
+#   - <list files to reference>  
+
+test_enable: True
+
+test_requirements: |
+  - import numpy as np
+  - from model.synpat.synpat_code import Synpat
+
+  1. that the generated arrays have the following expected output. 
+    1a. Use the following parameters:
+        - fft_rate_hz = 100
+        - use a dit_msec=10
+    1b.  Expected Output: The generate_synthetic_patterns function should return a dictionary like this:
+      {
+          "dit":      np.array([-9,9,-9]),
+          "dit_space": np.array([9,-9,9]),
+          "dah": np.array([-5,5,5,5,-5]),
+          "letter": np.array([5,-5,-5,-5,5]),
+          "word": np.array([3,-3,-3,-3,-3,-3,-3,-3])
+      }
+    1c. Use numpy.testing.assert_array_equal to compare the arrays instead of 
+    the == operator to avoid errors related to ambiguous truth values of arrays. 
+
+  2. Test method create_synthetic_pattern() 
+  - Call method with the follwing parameters
+      - fft_rate_hz = 100
+      - use a dit_msec=50
+      - pattern = [ (1, 2), (-1, 1), (0, 1)]
+      - amplitude_multiplier = 2
+  - Expected output is a numpy array with the following values:
+      [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -2,-2,-2,-2,-2, 0,0,0,0,0]
+
+  3. Test method create_synthetic_pattern() 
+  - Call method with the follwing parameters
+      - fft_rate_hz = 100
+      - use a dit_msec=20
+      - pattern = [ (1, 0.5), (0, 2)]
+      - amplitude_multiplier = 2
+  - Expected output is a numpy array with the following values:
+      [ 2,  0,0,0,0]
+
+  test_requirements: |
+    - SCENARIO: Testing analyze_waveform() w/ various parameters and verify the output
+    - GIVEN:
+      - create a waveform waveform_name=`WF1` w/ length 100 with one square wave pulse 10 samples wide
+        at index 30. The height of the pulse is  50
+      - create a waveform waveform_name=`WF2` w/ length 100 with one square wave pulse 10 samples wide
+        at index 30. The height of the pulse is :: 51
+    - WHEN:
+        - call generate_synthetic_patterns w/ <fft_rate_hz> <dit_msec>
+        - Let pulse_width_sec = <dit_msec>/1000
+        - call analyze_waveform w/ parameters <waveform_name>, <pulse_width_sec>,<prominence>, <fft_rate_hz>
+
+    - THEN: Expected output is an array w/ one element w/ values <index>, <prominence_percent>, <fwhm_width>, <is_unfiltered> 
+    - EXAMPLES: 
+      - | waveform_name | dit_msec | prominence_factor | fft_rate_hz | index | prominence_percent | fwhm_width | is_unfiltered |
+      - | WF1           | 100      | 0.5               | 100 | (33,37) inclusive | (98,102) inclusive | 10 | True |
+      - | WF2           | 100      | 0.5               | 100 | (33,37) inclusive | (98,102) inclusive | 10 | True |
+
+

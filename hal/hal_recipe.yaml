@@ -1,0 +1,41 @@
+target_name: HardwareAbstractionLayer
+
+requirements: |
+  - Write a HAL module to read chucks of audio data.
+
+  - Module parameters
+      - wav_filename: (default '/home/preact/sw/morsecode/wav/NightOfNights2015-various-12Jul2015.wav')
+      - audio_rate_hz : (default 44100 Hz)
+
+  - Module methods
+    - CONSTUCTOR
+      - call load_audio_file()
+
+    - get_next_chunk() : retrieving chunks of audio data
+      - Parameters:
+        - update_interval_ms: int 
+      - Returns ndarray with next update_interval_ms of audio data
+        Array length is (update_interval_ms/sample_rate_hz)
+        If no data available returns array of 0.0 values
+        
+    - load_audio_file() 
+        - reads in a WAV format file named wav_filename
+        - If stereo, extract the first channel.
+        - Saves data into a private variable named audio_data
+        - saves the sampling rate into a private variable named audio_rate_hz
+    - get_audio_rate_hz() 
+      - Return audio_rate_hz: Sampling rate of the audio signal in Hz
+         
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - Load audio WAV format using the scipy.io.wavfile module:
+
+test_enable: False
+
+# test_requirements: |
+#   - <list any special tests>    
+
+# code_references: |
+#   - <list files to reference>  

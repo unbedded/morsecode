@@ -1,0 +1,37 @@
+target_name: SignalController
+
+requirements: |
+  - Write a Controller module that is part of a Model/View/Controller for
+    manage the interaction between SignalModel and SignalView.
+  - Accept construction parameters for:
+      hal: a Hardware Abstraction Layer class.
+      model_fft: An instance of the SignalModelFft class.
+      model_decode: An instance of the SignalModelDecode class.
+      view: An instance of the SignalView class.
+  - Create module parameters:
+      update_interval_ms: Time in milliseconds between updates (default: 10 ms).
+      rescale_interval_sec: Time in seconds for rescaling the Y-axis of the bottom plot (default: 3 second).
+  Provide the following methods:
+      update():
+        1:  Call audio_data_chunk = hal.get_next_chunk(update_interval_ms) 
+        2:  signal_dict = model_fft.get_next_processed_chunk(audio_data_chunk).
+        3:  signal_dict = model_decode.get_next_processed_chunk(signal_dict).
+        4:  view.update_plots(signal_dict) for plot rendering.
+        5:  Call view.rescale_plot() if the rescale_interval_sec have elapsed.
+      start():
+          enables periodic calls to update() every update_interval_ms.
+          call view.run() to start the display application loop.
+
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - Use QTimer to enable periodic updates
+
+test_enable: False
+
+# test_requirements: |
+#   - <list any special tests>    
+
+# code_references: |
+#   - <list files to reference>  

@@ -1,0 +1,79 @@
+target_name: SignalModelFft
+
+requirements: |
+  - Write a Model module that is part of a Model/View/Controller for processing morse code audio data.
+  - Let class PlotDataDict(TypedDict): Hz: float; x_origin: float; y: np.ndarray
+  - Maintain the following rolling buffers sufficient to hold rolling_buffer_seconds of data
+    and initialize the buffer to zeros:
+    - audio_data_rolling_buffer (Let buffer sample period  audio_period_sec = 1/audio_rate_hz)
+    - fft_magnitude_rolling_buffer (Let buffer sample period fft_period_sec = 1/fft_rate_hz)
+  - Module Parameters
+    - rolling_buffer_seconds: (default 2.0 seconds)
+    - fft_rate_hz: Freq of FFT sampling (default: 100).
+    - freq_range: A tuple specifying the target frequency range for FFT analysis (default: (300, 1000) Hz).
+    - _dit_msec: a private variable to store the duration of a single "dit" in milliseconds. (default zero)
+  Provide the following methods:
+    - set_audio_rate_hz( audio_rate_hz: (int or float)) 
+      - PARAMETERS
+        - audio_rate_hz: (int or float) - Sampling rate of the audio signal in Hz
+      - STEPS
+        1) resize and initialize rolling buffers audio_data_rolling_buffer and fft_magnitude_rolling_buffer
+        2) update audio_rate_hz
+
+    - set_dit_msec(dit_msec: int)
+      - dit_msec: int -  Duration of a single "dit" in milliseconds.
+      - STEPS
+        1) update audio_rate_hz
+
+    - get_next_processed_chunk(audio_data_chunk):
+        - assert if dit_msec is zero  
+        - append audio_data_chunk onto audio_data_rolling_buffer.
+ 
+        - Compute fft_magnitude of audio_data_chunk using the streaming_fft class
+        - let fft_magnitude_range = fft_magnitude between freq_range
+        - let mag_rate_hz = (frequency_bins[1]-frequency_bins[0])
+        - Let fft_x = frequency_bins[0]   
+
+        - max_magnitude is max fft_magnitude_range
+        - append max_magnitude onto fft_magnitude_rolling_buffer 
+
+        - Returns a signal_dict dictionary of PlotDataDict values:
+          {
+              "plot_1": {"Hz":audio_rate_hz, "x":0.0, "y": audio_data_rolling_buffer}
+              "plot_2": {"Hz":mag_rate_hz,   "x":fft_x, "y": fft_magnitude_range} 
+              "plot_3": {"Hz":fft_rate_hz,   "x":0.0, "y": fft_magnitude_rolling_buffer} 
+          }
+
+# - let fft_freq_x = frequency_bins between freq_range 
+# - audio_x = np.linspace(0, (N - 1) * (1 / Hz), N)
+#     - with Hz = audio_rate_hz
+#     - with N = len(audio_data_rolling_buffer)
+# - max_x = np.linspace(0, (N - 1) * (1 / Hz), N)
+#     - with Hz = fft_rate_hz
+#     - with N = len(fft_magnitude_rolling_buffer)
+
+# - Ensure the class maintains state internally (e.g., frame_index, chunk_size, and 
+#   rolling buffers) and is efficient for real-time updates.
+# - create synpat = synpat() object
+# - Call synpat's generate_synthetic_patterns() .
+# - pattern = synpat.synthetic_patterns['dit']
+# - conv = np.convolve(fft_magnitude_rolling_buffer, pattern, mode='same')
+
+
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - Include the following import statements
+     from model_fft.fft.fft_code import streaming_fft 
+     from typing import TypedDict
+
+
+test_enable: False
+
+# test_requirements: |
+#   - <list any special tests>    
+
+code_references: |
+  - model_fft/fft/fft_code.py
+  

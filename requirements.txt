@@ -1,0 +1,10 @@
+# openai
+# pytest
+# pyyaml
+# coverage
+scipy
+numpy
+pyqtgraph
+PyQt5
+#PySide2
+

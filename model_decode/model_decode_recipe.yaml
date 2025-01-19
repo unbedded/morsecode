@@ -1,0 +1,48 @@
+target_name: SignalModelDecode
+
+requirements: |
+  - Write a Model module that is part of a Model/View/Controller for processing morse code audio data.
+  - Let class PlotDataDict(TypedDict): Hz: float; x_origin: float; y: np.ndarray
+  Provide the following methods:
+    - set_audio_rate_hz() 
+      - audio_rate_hz: (int or float) - Sampling rate of the audio signal in Hz
+
+    - set_dit_msec()
+      - dit_msec: (int) Duration of a single "dit" in milliseconds.
+
+    - get_next_processed_chunk(signal_dict : signal_dict: Dict[str, PlotDataDict]):
+        - log the a list of signal_dict keys only
+        - Returns signal_dict
+
+
+# - Do not do  isinstance(data_chunk, PlotDataDict): 
+#   since 'TypedDict does not support instance and class checks'
+
+# - Ensure the class maintains state internally (e.g., frame_index, chunk_size, and 
+#   rolling buffers) and is efficient for real-time updates.
+# - create synpat = synpat() object
+# - Call synpat's generate_synthetic_patterns() .
+# - pattern = synpat.synthetic_patterns['dit']
+# - conv = np.convolve(fft_magnitude_rolling_buffer, pattern, mode='same')
+
+
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - Include the following import statements
+     from model_decode.synpat.synpat_code import Synpat
+     from typing import TypedDict
+
+
+test_enable: False
+
+# test_requirements: |
+#   - <list any special tests>    
+
+code_references: |
+  - model_decode/synpat/synpat_code.py
+  
+
+
+
