@@ -4,11 +4,11 @@ requirements: |
   - Write Model-View-Controller (aka `MVC`) architecture with classes:
       - HardwareAbstractionLayer: hal
       - SignalModelFft : encapsulates audio processing and FFT analysis.
+      - SignalModelFilter: filter freq domain signal.
       - SignalModelDecode : encapsulates morse decode processing .
       - SignalView : to display the plots.
       - SignalController : to manage updates and interactions between the model and view.
-  - Parameters:
-    - dit_msec: Duration of a single "dit" in milliseconds. (default: 66)
+
   - Algorithm:
     # STEP_1: Load configuration
       - Open a YAML file configuration file.
@@ -20,15 +20,17 @@ requirements: |
         - If key does not exist use a default empty dictionary.
 
     # STEP_2a: instantiate classes
-      - hal/model_fft/model_decode/view/controller
+      - hal/model_fft/model_filter/model_decode/view/controller
 
     # STEP_2b: setup classes
       - model_fft.set_audio_rate_hz(hal.get_audio_rate_hz())
-      - model_fft.set_dit_msec(dit_msec)
+      - fft_rate_hz = model_fft.get_fft_rate_hz()
+      - model_filter.set_fft_rate_hz(fft_rate_hz)
+      - model_decode.set_fft_rate_hz(fft_rate_hz)
 
     # STEP_3: Save configuration
-      - Call each class 'get_params()` to update configuration
-      - Save configuration to the original YAML file
+      - Call each class 'get_cfg()` to update configuration
+      - Save configuration to the original YAML file.
 
     # STEP_4: Start the controller
       - Call the controller `run()` method
@@ -47,6 +49,7 @@ test_enable: False
 code_references: |
   - view/view_code.py
   - model_fft/model_fft_code.py
+  - model_filter/model_filter_code.py
   - model_decode/model_decode_code.py
   - controller/controller_code.py  
   - hal/hal_code.py

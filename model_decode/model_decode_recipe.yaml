@@ -2,29 +2,145 @@ target_name: SignalModelDecode
 
 requirements: |
   - Write a Model module that is part of a Model/View/Controller for processing morse code audio data.
-  - Let class PlotDataDict(TypedDict): Hz: float; x_origin: float; y: np.ndarray
-  Provide the following methods:
-    - set_audio_rate_hz() 
-      - audio_rate_hz: (int or float) - Sampling rate of the audio signal in Hz
+  - Let class PlotDataDict(TypedDict): target: str; color: str; Hz: float; x_origin: float; y: np.ndarray
 
-    - set_dit_msec()
-      - dit_msec: (int) Duration of a single "dit" in milliseconds.
+  CONFIGURATION PARAMETERS:
+    - wpm_start (default=24)
+    - wpm_end (default=12)
+    - p_thresh (default=0.5)
+    - default_dit_msec (default=66)
+    
+  METHODS:
+    CONSTRUCTION:
+      - create private _synpat = Synpat() 
+      - create private _prev_dit_msec (default=default_dit_msec)
+      - Set logging to WARNING
 
-    - get_next_processed_chunk(signal_dict : signal_dict: Dict[str, PlotDataDict]):
-        - log the a list of signal_dict keys only
-        - Returns signal_dict
+    process_sec(chunk_sec)
+      - set _chunk_sec = chunk_sec
+
+    get_cfg() 
+      returns `cfg_dict` updated with current class configuration parameter values.
+
+    set_fft_rate_hz(fft_rate_hz: float) - FFT sampling Rate set method
+      - save fft_rate_hz in a class private
+      - syn_wpm_dict = generate_synthetic_dict( wpm_start, wpm_end, fft_rate_hz)
+        and save syn_wpm_dict in a private
 
 
-# - Do not do  isinstance(data_chunk, PlotDataDict): 
-#   since 'TypedDict does not support instance and class checks'
+    apply_gaussian_filter(signal: np.ndarray, cutoff_hz: float, f_signal_Hz: float) -> np.ndarray`
+      - Applies Gaussian smoothing to a 1D signal.
+      - Computes the standard deviation (sigma) for a Gaussian filter given a cutoff frequency and sampling rate.
+      - Use the formula: sigma = (1 / (2 * π * cutoff_hz)) * f_signal_Hz.
+      - Uses `scipy.ndimage.gaussian_filter1d` for filtering.
+      - Returns the smoothed signal as a NumPy array.
 
-# - Ensure the class maintains state internally (e.g., frame_index, chunk_size, and 
-#   rolling buffers) and is efficient for real-time updates.
-# - create synpat = synpat() object
-# - Call synpat's generate_synthetic_patterns() .
-# - pattern = synpat.synthetic_patterns['dit']
-# - conv = np.convolve(fft_magnitude_rolling_buffer, pattern, mode='same')
 
+    process_chunk(plot_dict: Dict[str, PlotDataDict] ) -> Dict[str, PlotDataDict] 
+      - Do not test if signal_dict is not a dictionary with the correct structure.
+      - Do not test if Each value in signal_dict must be of type PlotDataDict
+
+      0) GET DATA
+        - norm_rolling_buffer = plot_dict['norm_rolling_buffer']['y']
+
+      1a) WPM - DETECT ZERO CROSSINGS  
+        - norm_filtered = apply_gaussian_filter(norm_rolling_buffer, cutoff_hz, fft_rate_hz)
+        - analyzes norm_filtered to determine the intervals between its zero crossings 
+        - Detect zero crossings by identifying points where the signal changes sign.
+        - intervals = Compute intervals between successive zero crossings.
+
+      1b) WPM - WRAP DAH intervals into DIT interval
+        - let wpm_max = max(wpm_start, wpm_end)
+        - let n_dits_in_dah = 3
+        - let dit_min_idx = int(_synpat.dit_sec(wpm_max)*fft_rate_hz)
+        - let dit_max_idx = dit_min_idx*n_dits_in_dah.
+        - Any intervals value between dit_min_idx and dit_max_idx is left unchanged
+        - if a value in intervals >= dit_max_idx then:
+           - wrapped_dah_value = int(value/n_dits_in_dah)
+           - replace the original value in intervals with wrapped_dah_value
+        - Any intervals value < dit_min_idx is set to zero
+        - Any intervals value >= dit_max_idx is set to zero
+
+      2) WPM - HISTOGRAM
+        - Make histogram_array with length (dit_max_idx) and initialize to zeros
+        - For each interval, increment the corresponding index in histogram_array.
+        - histogram_array[0] = 0
+        - histogram_array = apply_gaussian_filter(histogram_array, 30, fft_rate_hz)
+
+      3) WPM - PEAK PROMINENCE
+        - find the largest peak in histogram_array
+           - first_largest_peak_index is its index
+           - first_largest_peak_value is its value 
+
+      6) WPM - THRESHOLD
+        - if first_largest_peak_value > 1 then:
+            - Let dit_msec = (first_largest_peak_index/fft_rate_hz)*1000
+            - if dit_msec < 30 then dit_msec = default_dit_msec
+            - prev_dit_msec = dit_msec
+          - else dit_msec = prev_dit_msec
+        - dit_sec_array = np.array w/ one element (dit_msec*1000)
+
+
+      7) CONVOLVE with synthetic patterns
+        - syn_dit = generate_synthetic_patterns(fft_rate_hz, dit_msec)
+        - dit_impulse, nit_impulse, dah_impulse, letter_impulse, word_impulse are all
+          boolean array of length norm_filtered length initialized to False
+
+        - conv = numpy.convolve(syn_dit['dit'], norm_filtered, mode='same')
+        - dit_probability = max(conv,0)
+        - nit_probability = max(-conv,0)
+        - deriv_it = derivative(conv)
+        - it_impulse = is a boolean array that is True if the deriv_it crosses zero
+
+        - conv = numpy.convolve(syn_dit['dah'], norm_filtered, mode='same')
+        - dah_probability = max(conv,0)
+        - letter_probability = max(-conv,0)
+        - deriv_ah = derivative(conv)
+        - ah_impulse = is a boolean array that is True if the deriv_ah crosses zero
+
+        - conv = numpy.convolve(syn_dit['word'], norm_filtered, mode='same')
+        - word_probability = max(conv,0)
+        - deriv_word = derivative(conv) # derivative of word pattern
+        - w_impulse = is a boolean array that is True if the deriv_word crosses zero
+        
+        - for index in range(len(impulse_array)-1):
+          - max_prob = max(dit_probability[index],nit_probability[index], dah_probability[index],letter_probability[index] ,word_probability[index])
+          - if max_prob > p_thresh:
+            - if it_impulse[index]:
+              - dit_impulse[index]  = (dit_probability[index] == max_prob)
+              - nit_impulse[index]  = (nit_probability[index] == max_prob)
+            - if ah_impulse[index]:
+              - dah_impulse[index]    = (dah_probability[index] == max_prob)
+              - letter_impulse[index] = (letter_probability[index] == max_prob)
+            - if w_impulse[index]:
+              - word_impulse[index]   = (word_probability[index] == max_prob)
+
+        - ADD additional values to plot_dict:
+          {
+            "norm_filtered": {target:"plot_4", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": norm_filtered} 
+
+            "DIT_impulse": {"target":"plot_6", "color":"Green", "Hz":1, "x":0, "y": dit_impulse} 
+            "DIT": {"target":"plot_6", "color":"Green", "Hz":1, "x":0, "y": dit_probability} 
+
+            "NIT_impulse": {"target":"plot_6", "color":"Red", "Hz":1, "x":0, "y": nit_impulse} 
+            "NIT": {"target":"plot_6", "color":"Red", "Hz":1, "x":0, "y": nit_probability} 
+
+            "DAH_impulse": {"target":"plot_6", "color":"Blue", "Hz":1, "x":0, "y": dah_impulse} 
+            "DAH": {"target":"plot_6", "color":"Blue", "Hz":1, "x":0, "y": dah_probability} 
+
+            "LETTER_impulse": {"target":"plot_6", "color":"Magenta", "Hz":1, "x":0, "y": letter_impulse} 
+            "LETTER": {"target":"plot_6", "color":"Magenta", "Hz":1, "x":0, "y": letter_probability} 
+
+            "WORD_impulse": {"target":"plot_6", "color":"Cyan", "Hz":1, "x":0, "y": word_impulse} 
+            "WORD": {"target":"plot_6", "color":"Cyan", "Hz":1, "x":0, "y": word_probability} 
+          }
+      8) CLEANUP
+        - add additional values to plot_dict:
+          {
+              "FreqHz": {"target":"plot_5", "color":"Green", "Hz":fft_rate_hz, "x":0, "y": histogram_array} 
+              "FreqHz": {"target":"plot_5", "color":"Green", "Hz":fft_rate_hz, "x":0, "y": histogram_array} 
+          }
+          return plot_dict
 
 architecture: |
   - Package code into a class named [TARGET_NAME]
@@ -32,17 +148,16 @@ architecture: |
 code_requirements: |
   - Include the following import statements
      from model_decode.synpat.synpat_code import Synpat
-     from typing import TypedDict
-
+     from typing import Dict, TypedDict, Tuple
 
 test_enable: False
 
-# test_requirements: |
-#   - <list any special tests>    
+test_requirements: |
+  - <list any special tests>    
 
 code_references: |
   - model_decode/synpat/synpat_code.py
   
 
-
-
+# set_dit_msec(dit_msec:int) - Duration of a single "dit" in milliseconds.
+# - Save dit_msec in a private

@@ -1,7 +1,8 @@
-target_name: streaming_fft
+target_name: Streaming_fft
 
 requirements: |
   - CLASS INITIALIZATION
+    - Set logging to WARNING
     - PARAMETERS: Initialize the class with the following parameters:
       - window (str): Window function used to process the signal. Must be 'none', 'hamming', 'blackman'. Default is 'none'.
 

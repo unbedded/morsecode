@@ -3,96 +3,120 @@ target_name: "Synpat"
 requirements: |
   Write a module w/ the methods:
 
-  Construction()
-   - Include the class parameters
+  CONFIGURATION PARAMETERS:
+    - synpat_x (default=26)
+    - DIT_GAIN (default=0.333 * 1.3)
+    - NIT_GAIN (default=0.333 * 1.3)
+    - DAH_GAIN (default=0.2 * 1.1)
+    - LETTER_GAIN (default=0.2 * 1.1)
+    - WORD_GAIN (default=0.125 * 1.0)
     - relative_height (default: 0.5)  NOTE:0.5 evaluates at half the prominence
     - threshold_factor (default: 0.7)
+    - WPM_FACTOR = (default: 1.2)
 
-  create_synthetic_pattern()
-    To generate a synthetic array based on a provided pattern and normalize it with a specified amplitude multiplier.
-      1. Convert dit_msec (milliseconds) into samples using the given fft_rate_hz:
-      - samples_per_dit = (fft_rate_hz * dit_msec) / 1000
-      2. Construct the synthetic array:
-          Iterate over the pattern, which is a list of tuples:
-              Each tuple specifies:
-                  value (amplitude of the pulse, e.g., 0, -1, 1)
-                  duration_in_dits (duration of the pulse in terms of "dits")
-              If duration_in_dits is 0, the pulse should be a single sample with the specified value.
-              For non-zero durations, the pulse is created by repeating value for the corresponding number of samples.
-      3. Normalize the array:
-          Scale all values in the array by multiplying with amplitude_multiplier.
-      4. Return the resulting synthetic array as a numpy.ndarray.
+  METHODS:
+    CONSTRUCTION      
+      - Set logging to WARNING
 
-    ARGUMENTS::
-      - fft_rate_hz (int or float): Sampling rate in Hertz (Hz).
-      - dit_msec (int or float): Duration of a single "dit" in milliseconds.
-      - pattern (list of tuples): Defines the structure of the synthetic array. Each tuple contains:
-            value (int or float): Amplitude of the pulse.
-            duration_in_dits (int or float): Duration in "dits".
-      - amplitude_multiplier (int or float): Factor for normalizing the amplitude.
-    RETURNS:
-      - numpy.ndarray: 1D array representing the synthetic time series, where the length 
-        matches the total duration in samples.
+    def get_params(self) -> Dict:
 
-  generate_synthetic_patterns()
-    To create multiple synthetic arrays based on predefined 
-      patterns and normalization multipliers 
-      and save them a public variable dictionary named synthetic_patterns
-      1. Save a private variable with fft_rate_hz.
-      2. Use the following create_synthetic_pattern function to generate synthetic arrays for the following patterns and their multipliers:
-          `dit`:  [(-1, 1), (+1, 1), (-1, 1)]  - and multiply elements by 9x
-          `ndit`: [(+1, 1), (-1, 1), (+1, 1)] - and multiply elements by 9x
-          `dah`:  [(-1, 1), (+1, 3), (-1, 1)] - and multiply elements by 5x
-          `letter`: [(+1, 1), (-1, 3), (+1, 1)] - and multiply elements by 5x
-          `word`: [(+1, 1), (-1, 7)] - and multiply elements by 3x
-      3. Iterate over these patterns, using create_synthetic_pattern to generate the arrays.
-         The corresponding values should be the generated synthetic arrays
-        
-    ARGUMENTS::
+    create_synthetic()
+      To generate a synthetic array based on a provided pattern and normalize it with a specified amplitude multiplier.
+        1. Convert dit_msec (milliseconds) into samples using the given fft_rate_hz:
+        - samples_per_dit = (fft_rate_hz * dit_msec) / 1000
+        2. Construct the synthetic array:
+            Iterate over the pattern, which is a list of tuples:
+                Each tuple specifies:
+                    value (amplitude of the pulse, e.g., 0, -1, 1)
+                    duration_in_dits (duration of the pulse in terms of "dits")
+                If duration_in_dits is 0, the pulse should be a single sample with the specified value.
+                For non-zero durations, the pulse is created by repeating value for the corresponding number of samples.
+        3. Normalize the array:
+            Scale all values in the array by multiplying with amplitude_multiplier.
+        4. Return the resulting synthetic array as a numpy.ndarray.
+
+      ARGUMENTS::
         - fft_rate_hz (int or float): Sampling rate in Hertz (Hz).
         - dit_msec (int or float): Duration of a single "dit" in milliseconds.
-    RETURNS: None
+        - pattern (list of tuples): Defines the structure of the synthetic array. Each tuple contains:
+              value (int or float): Amplitude of the pulse.
+              duration_in_dits (int or float): Duration in "dits".
+        - amplitude_multiplier (int or float): Factor for normalizing the amplitude.
+      RETURNS:
+        - numpy.ndarray: 1D array representing the synthetic time series, where the length 
+          matches the total duration in samples.
 
-  analyze_waveform()
-      1. Calculate 
-        - nominal width in indices using the pulse width and sample rate.
-        - calcualte prominence_threshold
-        - calculate peak_height_min
-      2. Identify peaks: in the waveform using scipy.signal.find_peaks, setting the 
-          height=peak_height_min and the calculated prominence=prominence_threshold.
-      3. Compute FWHM for each peak: Compute the full width at half maximum (FWHM) for each peak using 
-         scipy.signal.peak_widths with a relative height of relative_height.
-        - convert widths to integers 
-      4. Mark Peaks attriubute is_unfiltered: Set True if peak's width is within (fwhm_min, fwhm_max) (inclusive)
-      5- Return tuple w/ results 
+    generate_synthetic_patterns()
+      To create multiple synthetic arrays based on predefined 
+        patterns and normalization multipliers 
+        and return a dictionary with the synthetic_patterns
+        1. Save a private variable with fft_rate_hz.
+        2. Use create_synthetic() to generate synthetic arrays for the following patterns and their multipliers:
+            `dit`:  [(-1, 1), (+1, 1), (-1, 1)]  - and multiply elements by DIT_GAIN
+            `ndit`: [(+1, 1), (-1, 1), (+1, 1)] - and multiply elements by NIT_GAIN
+            `dah`:  [(-1, 1), (+1, 3), (-1, 1)] - and multiply elements by DAH_GAIN
+            `letter`: [(+1, 1), (-1, 3), (+1, 1)] - and multiply elements by LETTER_GAIN
+            `word`: [(+1, 1), (-1, 7)] - and multiply elements by WORD_GAIN
+        3. Iterate over these patterns, using create_synthetic to generate the arrays.
+           Normalize each array by dividing by ((fft_rate_hz * dit_msec) / 1000)
+           Save values in a syn_dict dictionary and return it.
+      ARGUMENTS:
+          - fft_rate_hz (int or float): Sampling rate in Hertz (Hz).
+          - dit_msec (int or float): Duration of a single "dit" in milliseconds.
+      RETURNS: syn_dict
 
-    ARGUMENTS:
-      - waveform: a NumPy array representing the waveform.
-      - pulse_width_sec: float range:(0.02,1.0) default= 0.06  
-          a float representing the nominal pulse width in seconds.
-          Must be long enough for a space which is 7 dits wide.
-      - prominence_factor: float range:[0.1,1.0) default= 0.7 
-          to scale the prominence threshold.
-      - fwhm_min_factor: float range:[0.2,1.0) default= 0.7
-      - fwhm_max_factor: float range:(1.0,1.4) default= 1.2
+    wpm_from_dit(dit_sec:float)-> float:
+        return (WPM_FACTOR/dit_sec)
+    dit_sec(wpm:float)-> float:
+        return (WPM_FACTOR/wpm)
 
-    RETURN: a NamedTuple named `AnalysisInfo` w/
-      - prominence_threshold = waveform.max() * prominence_factor
-      - peak_height_min = waveform.max() * threshold_factor
-      - fwhm_min = {nominal_width * fwhm_min_factor} 
-      - nominal_width = {nominal_width} - 
-      - fwhm_max = {nominal_width * fwhm_max_factor}
-      - a list of NamedTuple named 'PeakInfo' w/ one item for each idenitfied peak from find_peaks()
-        - index: the indices of peak
-        - prominence_percent: equal to 100*(peak height - prominence_threshold )/prominence_threshold
-          an integer representing percentage 
-          (prominence threshold) vs (actual Peak(prominence threshold)  
-        - fwhm_width: FWHM peak width
-        - is_unfiltered: boolean if identified peak is included in filtered peak
-    
-    CONSTRAINTS:  Use the following constants:
+    generate_synthetic_dict( wpm_start:int, wpm_end:int, fft_rate_hz:float) -> Dict 
+      - let dit_msec_start = 1000*dit_sec(wpm_start)  
+      - let dit_msec_end = 1000*dit_sec(wpm_end)
+      - let dit_msec_step = (dit_msec_end - dit_msec_start)/8
+      - Call generate_synthetic_patterns() with a range of dit_msec values
+        - Let dit_msec equal from dit_msec_start to dit_msec_end stepping by dit_msec_step
+        - save returned value into a public dictionary named syn_dict_wpm
+          Use integers for dictionary keys 'key = int(wpm_from_dit(dit_msec))'
 
-      # - waveform_type: an enum of one of the following values: 'dit', 'ndit', 'dah', 'space', 'word'.
+    analyze_waveform()
+        1. Calculate 
+          - nominal width in indices using the pulse width and sample rate.
+          - calcualte prominence_threshold
+          - calculate peak_height_min
+        2. Identify peaks: in the waveform using scipy.signal.find_peaks, setting the 
+            height=peak_height_min and the calculated prominence=prominence_threshold.
+        3. Compute FWHM for each peak: Compute the full width at half maximum (FWHM) for each peak using 
+          scipy.signal.peak_widths with a relative height of relative_height.
+          - convert widths to integers 
+        4. Mark Peaks attriubute is_unfiltered: Set True if peak's width is within (fwhm_min, fwhm_max) (inclusive)
+        5- Return tuple w/ results 
+      ARGUMENTS:
+        - waveform: a NumPy array representing the waveform.
+        - pulse_width_sec: float range:(0.02,1.0) default= 0.06  
+            a float representing the nominal pulse width in seconds.
+            Must be long enough for a space which is 7 dits wide.
+        - prominence_factor: float range:[0.1,1.0) default= 0.7 
+            to scale the prominence threshold.
+        - fwhm_min_factor: float range:[0.2,1.0) default= 0.7
+        - fwhm_max_factor: float range:(1.0,1.4) default= 1.2
+      RETURN: a NamedTuple named `AnalysisInfo` w/
+        - prominence_threshold = waveform.max() * prominence_factor
+        - peak_height_min = waveform.max() * threshold_factor
+        - fwhm_min = {nominal_width * fwhm_min_factor} 
+        - nominal_width = {nominal_width} - 
+        - fwhm_max = {nominal_width * fwhm_max_factor}
+        - a list of NamedTuple named 'PeakInfo' w/ one item for each idenitfied peak from find_peaks()
+          - index: the indices of peak
+          - prominence_percent: equal to 100*(peak height - prominence_threshold )/prominence_threshold
+            an integer representing percentage 
+            (prominence threshold) vs (actual Peak(prominence threshold)  
+          - fwhm_width: FWHM peak width
+          - is_unfiltered: boolean if identified peak is included in filtered peak
+      
+      CONSTRAINTS:  Use the following constants:
+
+        # - waveform_type: an enum of one of the following values: 'dit', 'ndit', 'dah', 'space', 'word'.
 
 
 architecture: |
@@ -126,7 +150,7 @@ test_requirements: |
     1c. Use numpy.testing.assert_array_equal to compare the arrays instead of 
     the == operator to avoid errors related to ambiguous truth values of arrays. 
 
-  2. Test method create_synthetic_pattern() 
+  2. Test method create_synthetic() 
   - Call method with the follwing parameters
       - fft_rate_hz = 100
       - use a dit_msec=50
@@ -135,7 +159,7 @@ test_requirements: |
   - Expected output is a numpy array with the following values:
       [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -2,-2,-2,-2,-2, 0,0,0,0,0]
 
-  3. Test method create_synthetic_pattern() 
+  3. Test method create_synthetic() 
   - Call method with the follwing parameters
       - fft_rate_hz = 100
       - use a dit_msec=20

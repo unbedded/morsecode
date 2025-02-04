@@ -1,0 +1,105 @@
+target_name: SignalModelFilter
+
+requirements: |
+  - Write a Model module that is part of a Model/View/Controller for processing morse code audio data.
+  - Let class PlotDataDict(TypedDict):  target: str; color: str; Hz: float; x_origin: float; y: np.ndarray
+
+  CONFIGURATION PARAMETERS:
+  - cw_mag_thresh_seconds:float (default 0.1 seconds)
+  - display_seconds:float (default 3.0 seconds)
+  - fft_rate_hz:float Freq of FFT sampling (default: 100).
+  - cw_peak_ratio_threshold:float - threshold for magnitude ratio (default: 4)
+  - cw_peak_ratio_threshold_min:float - under this value - signal is noise (default: 3)
+  - cutoff_hz:float - cutoff frequency for Gaussian smoothing (default: 15.0). 
+  - n_move_avg_elements:int - number of elements in rolling buffer (default: 6)
+    
+  METHODS:
+    CONSTRUCTION
+      - Set logging to WARNING
+      Maintain the following rolling buffers:
+      - cw_mag_rolling_buffer 
+        - length is display_seconds*fft_rate_hz initialized to an array of zeros 
+      - cw_mag_thresh_rolling_buffer 
+        - length is display_seconds*fft_rate_hz initialized to an array of zeros 
+      - norm_rolling_buffer 
+        - length is display_seconds*fft_rate_hz initialized to an array of zeros 
+
+      - cw_mag_for_norm_gain 
+        - length is cw_mag_thresh_seconds*fft_rate_hz initialized to an array of zeros 
+
+    move_avg_elementwise() 
+      Function that maintains a queue of nparrays. Queue is initially empty.
+        1. Accept a new NumPy array (`new_sample`)
+        2. if length of new_sample is different than previous inserted element then:
+           Clear the queue and re-initialize it.
+        3. Insert new_sample into the queue.
+        4. if queue contains more than n_move_avg_elements discard the oldest element
+        5. Compute and return an array representing the element-wise average of all arrays in queue
+        6. If using python then Ensure efficient operations using `collections.deque`.
+
+    set_fft_rate_hz( fft_rate_hz: (int or float)) 
+        1) resize and initialize cw_mag_for_norm_gain and cw_mag_rolling_buffer and cw_mag_thresh_rolling_buffer and norm_rolling_buffer  
+        2) update fft_rate_hz
+
+
+    process_chunk(plot_dict: Dict[str, PlotDataDict] ) -> Dict[str, PlotDataDict] 
+      1) SOURCE DATA
+        - Let cw_frequencies = plot_dict['Freq']['y']
+        - Let magnitude = plot_dict['Magnitude']['y'][-1]
+
+      2) MOVE AVG FFT FILTER - cw_frequencies
+          - cw_frequencies_avg = move_avg_elementwise(cw_frequencies)
+
+      3) CALC PEAK RATIO
+        - Let cw_mag_max = max(cw_frequencies_avg)
+        - Let cw_mag_mean = remove cw_mag_max value from cw_frequencies_avg and calculate mean
+        - Let cw_peak_ratio = cw_mag_max/cw_mag_mean
+
+      4) FILTER MAGNITUDE for NORMALIZATION GAIN/OFFSET
+        - tmp = 0
+        - if cw_peak_ratio > cw_peak_ratio_threshold: 
+            - append (cw_mag_max) onto rolling buffer cw_mag_for_norm_gain
+            - tmp = cw_mag_max
+        - append (tmp) onto rolling buffer cw_mag_thresh_rolling_buffer
+        - append (cw_mag_max) onto rolling buffer cw_mag_rolling_buffer
+
+      5) NORMALIZE
+        - Let norm_min/norm_max/norm_mean are calculated using cw_mag_for_norm_gain
+        - if cw_peak_ratio > cw_peak_ratio_threshold_min: 
+           - norm_range = norm_max - norm_min
+           - if norm_range < 0.1 then norm_range = 0.1
+           - norm =  2 * (magnitude - norm_mean/2) / norm_range
+           - if norm > 1.0 then norm = 1.0
+           - if norm < -1.0 then norm = -1.0
+         else:
+           norm = -1.0
+
+      6) ROLLING BUFFER 
+        - Append norm to end of rolling buffer norm_rolling_buffer
+
+      8) return plot_dict w/ additional values:
+        {
+            "Magnitude": {target:"plot_3", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": cw_mag_rolling_buffer} 
+            "Mag_Thresh": {target:"plot_3", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": cw_mag_thresh_rolling_buffer} 
+            "norm_rolling_buffer": {target:"plot_4", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": norm_rolling_buffer} 
+            "norm_gain": {target:"plot_7", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": cw_mag_for_norm_gain} 
+        }
+
+architecture: |
+  - Package code into a class named [TARGET_NAME]
+
+code_requirements: |
+  - Include the following import statements
+     from typing import TypedDict
+
+test_enable: False
+
+
+  # apply_gaussian_filter(signal: np.ndarray, cutoff_hz: float, f_signal_Hz: float) -> np.ndarray`
+  #   - Applies Gaussian smoothing to a 1D signal.
+  #   - Computes the standard deviation (sigma) for a Gaussian filter given a cutoff frequency and sampling rate.
+  #   - Use the formula: sigma = (1 / (2 * π * cutoff_hz)) * f_signal_Hz.
+  #   - Uses `scipy.ndimage.gaussian_filter1d` for filtering.
+  #   - Returns the smoothed signal as a NumPy array.
+
+  # - norm_filtered = apply_gaussian_filter(norm_rolling_buffer, cutoff_hz, fft_rate_hz)

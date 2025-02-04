@@ -4,3 +4,14 @@ Makefile
 .coverage
 .mp3
 .mp4
+.prompt_*.md
+.log
+__pycache__
+managed_context/
+morse_cfg.yaml
+test_suite_analysis/
+wav/MorseDecode.png
+wav/NightOfNights2015-various-12Jul2015.mp3
+wav/NightOfNights2015-various-12Jul2015.wav
+wav/kph-night-of-nights.mp3
+wav/kph-night-of-nights.wav

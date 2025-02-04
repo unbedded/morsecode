@@ -6,21 +6,52 @@ requirements: |
   - Accept construction parameters for:
       hal: a Hardware Abstraction Layer class.
       model_fft: An instance of the SignalModelFft class.
+      model_filter: An instance of the SignalModelFilter class.
       model_decode: An instance of the SignalModelDecode class.
       view: An instance of the SignalView class.
-  - Create module parameters:
-      update_interval_ms: Time in milliseconds between updates (default: 10 ms).
+
+  CONFIGURATION PARAMETERS:
+      update_interval_ms: Time in milliseconds between updates (default: 5 ms).
       rescale_interval_sec: Time in seconds for rescaling the Y-axis of the bottom plot (default: 3 second).
-  Provide the following methods:
-      update():
-        1:  Call audio_data_chunk = hal.get_next_chunk(update_interval_ms) 
-        2:  signal_dict = model_fft.get_next_processed_chunk(audio_data_chunk).
-        3:  signal_dict = model_decode.get_next_processed_chunk(signal_dict).
-        4:  view.update_plots(signal_dict) for plot rendering.
-        5:  Call view.rescale_plot() if the rescale_interval_sec have elapsed.
-      start():
-          enables periodic calls to update() every update_interval_ms.
-          call view.run() to start the display application loop.
+      plot_interval_sec: Time in seconds for rescaling the Y-axis of the bottom plot (default: 0.125 second).
+      decode_interval_sec: Time in seconds for decoding the audio data (default: 0.5 second).
+      fft_rate_hz: The sampling rate of the audio data (default: 200 Hz).
+
+  METHODS:
+    CONSTRUCTION:
+      - create private _plot_counter = 0
+      - create private _rescale_counter = 0
+      - create private _decode_counter = 0
+      - Set logging to WARNING
+      - Call model_decode.process_sec(decode_interval_sec)
+
+    get_cfg():
+      - return a dictionary of the configuration parameters
+
+    update():
+      1) INCREMENT COUNTERS
+        - increment counters
+      2) PROCESS FFT CHUNK
+        - Call audio_data_chunk = hal.get_next_chunk(update_interval_ms) 
+        - signal_dict = model_fft.process_chunk(audio_data_chunk).
+        - signal_dict = model_filter.process_chunk(signal_dict).
+      3) DECODE CHUNK
+        - if _decode_counter>=fft_rate_hz*decode_interval_sec:
+            - signal_dict = model_decode.process_chunk(signal_dict).
+            - view.process_chunk(signal_dict)
+            - reset _decode_counter
+      4) PLOT CHUNK
+        - if _plot_counter>=fft_rate_hz*plot_interval_sec:
+            - Call view.process_chunk(signal_dict)
+            - reset _plot_counter
+      5) RESCALE PLOT
+        - if _rescale_counter>=fft_rate_hz*plot_interval_sec:
+            - Call view.rescale_plot()
+            - reset _rescale_counter
+
+    start():
+        enables periodic calls to update() every update_interval_ms.
+        call view.run() to start the display application loop.
 
 architecture: |
   - Package code into a class named [TARGET_NAME]
