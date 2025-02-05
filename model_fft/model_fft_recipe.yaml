@@ -7,8 +7,9 @@ requirements: |
   CONFIGURATION PARAMETERS:
     - rolling_buffer_seconds: (default 3.0 seconds)
     - fft_rate_hz: Freq of FFT sampling (default: 200).
-    - freq_range_min:  Min target frequency range for FFT analysis (default: 300 Hz).
+    - freq_range_min:  Min target frequency range for FFT analysis (default: 200 Hz).
     - freq_range_max:  Max target frequency range for FFT analysis (default: 1000 Hz).
+    - bandpass_filter_order: Order of the Butterworth band-pass filter (default: 4).
 
   METHODS:
     CONSTRUCTION:
@@ -26,10 +27,22 @@ requirements: |
       1) resize and initialize rolling buffers audio_data_rolling_buffer and fft_magnitude_rolling_buffer
       2) update audio_rate_hz
 
-    process_chunk(audio_data_chunk) -> Dict[str, PlotDataDict] :
-      1) append audio_data_chunk onto audio_data_rolling_buffer. 
-      2) Compute fft_magnitude of audio_data_chunk using the streaming_fft class
-      3) fft_magnitude_range = fft_magnitude between freq_range_min & freq_range_max 
+    goertzel(samples:ndarray, target_freq, fs=44100) -> float:
+       Detects a specific frequency in a signal using the Goertzel algorithm
+
+    bandpass_filter(data:ndarray, fs=44100) -> ndarray:
+      Applies a Butterworth (IIR) band-pass filter to isolate low freq signals
+      Bandpass is between freq_range_min and freq_range_max
+      Filter order is bandpass_filter_order
+
+    cw_detection(audio_chunk:ndarray, cw_samples_hz:ndarray, fs=44100) -> ndarray:
+      1) bandpass_filter audio_chunk
+      2) return the goertzel() for each cw_samples_hz using the on bandpass filtered samples
+
+    process_chunk(audio_chunk) -> Dict[str, PlotDataDict] :
+      1) append audio_chunk onto audio_data_rolling_buffer. 
+      2) cw_samples_hz = [freq_range_min to freq_range_max] at 50 Hz steps
+      3) fft_magnitude_range = cw_detection(audio_chunk, cw_samples_hz, audio_rate_hz)
       4) mag_max = max(fft_magnitude_range) 
       5) append mag_max onto rolling buffer fft_magnitude_rolling_buffer 
       6) fft_magnitude_hz = 1/(frequency_bins[1]-frequency_bins[0]
@@ -56,6 +69,8 @@ test_enable: False
 # test_requirements: |
 #   - <list any special tests>    
 
-code_references: |
-  - model_fft/fft/fft_code.py
+# code_references: |
+#   - model_fft/fft/fft_code.py
   
+# 2) Compute fft_magnitude of audio_chunk using the streaming_fft class
+# 3) fft_magnitude_range = fft_magnitude between freq_range_min & freq_range_max 
