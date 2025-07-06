@@ -53,6 +53,7 @@ requirements: |
       3) CALC PEAK RATIO
         - Let cw_mag_max = max(cw_frequencies_avg)
         - Let cw_mag_mean = remove cw_mag_max value from cw_frequencies_avg and calculate mean
+        - Let cw_mag_min = min(cw_frequencies_avg)
         - Let cw_peak_ratio = cw_mag_max/cw_mag_mean
 
       4) FILTER MAGNITUDE for NORMALIZATION GAIN/OFFSET

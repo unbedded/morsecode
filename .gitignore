@@ -5,7 +5,7 @@ Makefile
 .mp3
 .mp4
 .prompt_*.md
-.log
+*.log
 __pycache__
 managed_context/
 morse_cfg.yaml

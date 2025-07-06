@@ -42,7 +42,7 @@ requirements: |
     process_chunk(audio_chunk) -> Dict[str, PlotDataDict] :
       1) append audio_chunk onto audio_data_rolling_buffer. 
       2) cw_samples_hz = [freq_range_min to freq_range_max] at 50 Hz steps
-      3) fft_magnitude_range = cw_detection(audio_chunk, cw_samples_hz, audio_rate_hz)
+      2a) fft_magnitude_range /= 100000
       4) mag_max = max(fft_magnitude_range) 
       5) append mag_max onto rolling buffer fft_magnitude_rolling_buffer 
       6) fft_magnitude_hz = 1/(frequency_bins[1]-frequency_bins[0]

@@ -117,7 +117,7 @@ requirements: |
 
         - ADD additional values to plot_dict:
           {
-            "norm_filtered": {target:"plot_4", "color":"Green", "Hz":fft_rate_hz,   "x":0.0, "y": norm_filtered} 
+            "norm_filtered": {target:"plot_4", "color":"Yellow", "Hz":fft_rate_hz,   "x":0.0, "y": norm_filtered} 
 
             "DIT_impulse": {"target":"plot_6", "color":"Green", "Hz":1, "x":0, "y": dit_impulse} 
             "DIT": {"target":"plot_6", "color":"Green", "Hz":1, "x":0, "y": dit_probability} 
@@ -137,7 +137,6 @@ requirements: |
       8) CLEANUP
         - add additional values to plot_dict:
           {
-              "FreqHz": {"target":"plot_5", "color":"Green", "Hz":fft_rate_hz, "x":0, "y": histogram_array} 
               "FreqHz": {"target":"plot_5", "color":"Green", "Hz":fft_rate_hz, "x":0, "y": histogram_array} 
           }
           return plot_dict

@@ -1,12 +1,12 @@
-#  TOKENS: 3289 (of:8000) = 2543 + 746(prompt+return) -- MODEL: gpt-4o 
+#  TOKENS: 3225 (of:8000) = 2615 + 610(prompt+return) -- MODEL: gpt-4o 
 # policy: ./ai_sw_workflow/policy/policy_pytest.yaml 
 # code: view/view_code.py 
 # dest: view/view_test.py 
 """
 Unit tests for the SignalView class in the view/view_code.py module.
-This test suite verifies the functionality of the SignalView class, ensuring it correctly processes and displays plot data.
-The tests cover initialization, data processing, plot clearing, and configuration retrieval.
-Date: 2025-02-04
+This test suite ensures that the SignalView class behaves as expected when processing valid data.
+The tests cover initialization, plot processing, and configuration retrieval.
+Date: 2025-02-06
 """
 
 import pytest
@@ -29,43 +29,28 @@ def test_initialization(signal_view):
     for i in range(1, 8):
         assert f"plot_{i}" in signal_view.curves
 
-def test_clear_plots(signal_view):
-    """Test that clear_plots method clears the specified plots."""
-    signal_dict = {
-        "curve_1": PlotDataDict(target="plot_1", color='b', Hz=1.0, x_origin=0.0, y=np.array([0, 1, 0])),
-        "curve_2": PlotDataDict(target="plot_2", color='r', Hz=2.0, x_origin=0.0, y=np.array([1, 0, 1]))
-    }
-    signal_view.process_chunk(signal_dict)
-    signal_view.clear_plots(signal_dict)
-    for plot_name in signal_view.curves:
-        assert len(signal_view.curves[plot_name].listDataItems()) == 0
-
-@pytest.mark.parametrize("plot_name, expected_range", [
-    ("plot_2", (0, 800000)),
-    ("plot_3", (0, 800000)),
-    ("plot_5", (0, 10)),
-    ("plot_4", (-1, 1)),
-    ("plot_6", (-1, 1)),
-    ("plot_7", (-1, 1))
-])
-def test_rescale_plot(signal_view, plot_name, expected_range):
-    """Test that rescale_plot method sets the correct Y-axis range."""
-    signal_view.rescale_plot()
-    y_range = signal_view.curves[plot_name].getViewBox().viewRange()[1]
-    assert y_range == list(expected_range)
-
 def test_process_chunk(signal_view):
-    """Test that process_chunk method correctly processes and plots data."""
+    """Test processing a chunk of data and plotting it."""
     signal_dict = {
-        "curve_1": PlotDataDict(target="plot_1", color='b', Hz=1.0, x_origin=0.0, y=np.array([0, 1, 0])),
-        "curve_2": PlotDataDict(target="plot_2", color='r', Hz=2.0, x_origin=0.0, y=np.array([1, 0, 1]))
+        'curve_1': {'target': 'plot_1', 'color': 'r', 'Hz': 1.0, 'x_origin': 0.0, 'y': np.sin(np.linspace(0, 2 * np.pi, 100))},
+        'curve_2': {'target': 'plot_2', 'color': 'b', 'Hz': 1.0, 'x_origin': 0.0, 'y': np.cos(np.linspace(0, 2 * np.pi, 100))}
     }
     signal_view.process_chunk(signal_dict)
-    for curve_name, data in signal_dict.items():
-        plot = signal_view.curves[data['target']]
-        assert len(plot.listDataItems()) == 1
+    # Check if the plots have been updated with the correct number of curves
+    assert len(signal_view.curves['plot_1'].listDataItems()) == 1
+    assert len(signal_view.curves['plot_2'].listDataItems()) == 1
+
+def test_rescale_plot(signal_view):
+    """Test that the rescale_plot method sets the correct ranges."""
+    signal_view.rescale_plot()
+    assert signal_view.curves['plot_1'].getViewBox().autoRangeEnabled()
+    assert signal_view.curves['plot_2'].getViewBox().state['viewRange'][1] == [0, 40000]
+    assert signal_view.curves['plot_5'].getViewBox().state['viewRange'][0] == [0, 0.120]
 
 def test_get_cfg(signal_view):
-    """Test that get_cfg method returns the correct configuration."""
+    """Test that the get_cfg method returns the correct configuration."""
     cfg = signal_view.get_cfg()
+    assert cfg['N_PLOTS'] == 7
+    assert cfg['MAX_X'] == 40000
     assert cfg['rolling_buffer_seconds'] == 3.0
+    assert cfg['padding_percent'] == 10

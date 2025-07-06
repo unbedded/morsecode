@@ -9,7 +9,7 @@ requirements: |
 
   CONFIGURATION PARAMETERS:
     - N_PLOTS=7
-    - MAX_X = 800000
+    - MAX_X = 100000
     - rolling_buffer_seconds: (default 3.0 seconds)
     - padding_percent= 10
 
@@ -47,11 +47,11 @@ requirements: |
 
 
     rescale_plot()
+      - autoscale plot_1 to fit range 
       - Y-axis scale is fixed for plot_2, plot_3 to the range [0, MAX_X].
+      - Y-axis scale is fixed for plot_4 and plot_6 and plot_7 to the range [-1,+1]
       - Y-axis scale is fixed for  plot_5 to the range [0,10]
       - X-axis scale is fixed for  plot_5 to the range [0,0.120]
-      - Y-axis scale is fixed for plot_4 and plot_6 and plot_7 to the range [-1,+1]
-        Rescale plot_1 to fit range [min_y, max_y] with padding_percent % padding.
     
     teardown()
       - Add a teardown method to clean up resources and enable a finally block to ensure the teardown method is called.
